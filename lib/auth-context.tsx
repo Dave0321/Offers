@@ -19,6 +19,7 @@ export interface AuthUser {
   officer?: string;
   agency?: string;
   agencyId?: string;
+  accessToken?: string;
 }
 
 interface AuthContextType {

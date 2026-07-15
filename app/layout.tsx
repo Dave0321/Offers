@@ -1,4 +1,3 @@
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Metadata } from "next";
 import { V0Provider } from "@/lib/v0-context";
@@ -7,12 +6,6 @@ import { RoleProvider } from "@/lib/role-context";
 import { IssueProvider } from "@/lib/issue-context";
 import localFont from "next/font/local";
 import LayoutShell from "@/components/layout-shell";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 const rebelGrotesk = localFont({
   src: "../public/fonts/Rebels-Fett.woff2",
@@ -49,7 +42,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${rebelGrotesk.variable} ${inter.variable} antialiased`}
+        className={`${rebelGrotesk.variable} antialiased`}
       >
         <V0Provider isV0={isV0}>
           <AuthProvider>

@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Bullet from "@/components/ui/bullet";
+import { Bullet } from "@/components/ui/bullet";
 import { cn } from "@/lib/utils";
 import {
   getAgencyIssues,

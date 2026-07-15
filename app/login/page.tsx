@@ -4,9 +4,10 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Megaphone, User, Building2, ArrowRight, Eye, EyeOff, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { AGENCIES, CURRENT_CITIZEN, CURRENT_AGENCY } from "@/lib/reportje-data";
+import { CURRENT_AGENCY } from "@/lib/reportje-data";
 import type { Role } from "@/lib/reportje-data";
 import type { AuthUser } from "@/lib/auth-context";
+import { signInOfficer } from "@/lib/api";
 
 // ─── Mock citizens ──────────────────────────────────────────────────────────
 const MOCK_CITIZENS = [
@@ -38,8 +39,7 @@ export default function LoginPage() {
   const [showCitizenPwd, setShowCitizenPwd] = React.useState(false);
 
   // Agency form state
-  const [agencyIdx, setAgencyIdx] = React.useState(0);
-  const [officerName, setOfficerName] = React.useState("");
+  const [officerEmail, setOfficerEmail] = React.useState("");
   const [agencyPwd, setAgencyPwd] = React.useState("");
   const [showAgencyPwd, setShowAgencyPwd] = React.useState(false);
 
@@ -47,53 +47,37 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
 
   const selectRole = (r: Role) => {
+    if (r === "citizen") {
+      window.location.assign(process.env.NEXT_PUBLIC_REPORTJE_URL || "http://localhost:3000");
+      return;
+    }
     setSelectedRole(r);
     setError("");
     setStep("form");
   };
 
-  const handleLogin = (skipValidation: boolean) => {
+  const handleLogin = async () => {
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      if (selectedRole === "citizen") {
-        const citizen = MOCK_CITIZENS[citizenIdx];
-        if (!skipValidation && citizenPwd && citizenPwd !== citizen.password) {
-          setError("Incorrect password. Try 'pass123' or click Continue.");
-          setLoading(false);
-          return;
-        }
-        const user: AuthUser = {
-          name: citizen.name,
-          email: citizen.email,
-          avatar: citizen.avatar,
-          area: citizen.area,
-        };
-        login("citizen", user);
-        router.push("/");
-      } else {
-        const agency = AGENCIES[agencyIdx];
-        const officer = officerName.trim() || "Officer";
-        if (!skipValidation && agencyPwd && agencyPwd !== AGENCY_PASSWORD) {
-          setError("Incorrect password. Try 'pass123' or click Continue.");
-          setLoading(false);
-          return;
-        }
-        const user: AuthUser = {
-          name: agency.name,
-          email: `ops@${agency.id}.gov.my`,
-          avatar: CURRENT_AGENCY.avatar,
-          area: agency.area,
-          officer,
-          agency: agency.name,
-          agencyId: agency.id,
-        };
-        login("agency", user);
-        router.push("/agency");
-      }
+    try {
+      const session = await signInOfficer(officerEmail, agencyPwd);
+      const user: AuthUser = {
+        name: "Government Officer",
+        email: session.email,
+        avatar: CURRENT_AGENCY.avatar,
+        area: "Assigned authority",
+        officer: session.email,
+        agency: "Assigned authority",
+        accessToken: session.accessToken,
+      };
+      login("agency", user);
+      router.push("/agency");
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Unable to sign in.");
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -198,7 +182,7 @@ export default function LoginPage() {
                   {selectedRole === "citizen" ? "Citizen login" : "Agency login"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Use your credentials or click <span className="text-foreground">Continue</span> to skip validation.
+                  Use your assigned Supabase officer credentials.
                 </p>
               </div>
 
@@ -228,17 +212,17 @@ export default function LoginPage() {
                     {/* Password */}
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="citizen-pwd" className="text-sm text-foreground">
-                        Password <span className="text-muted-foreground">(optional)</span>
+                        Password
                       </label>
                       <div className="relative">
                         <input
                           id="citizen-pwd"
                           type={showCitizenPwd ? "text" : "password"}
-                          placeholder="pass123"
+                        placeholder="Your officer password"
                           value={citizenPwd}
                           onChange={(e) => { setCitizenPwd(e.target.value); setError(""); }}
                           className="w-full rounded-lg border border-border bg-card px-4 py-3 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-                          onKeyDown={(e) => e.key === "Enter" && handleLogin(false)}
+                          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                         />
                         <button
                           type="button"
@@ -249,42 +233,18 @@ export default function LoginPage() {
                           {showCitizenPwd ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Demo password: <code className="text-foreground">pass123</code></p>
                     </div>
                   </>
                 ) : (
                   <>
-                    {/* Agency dropdown */}
                     <div className="flex flex-col gap-1.5">
-                      <label htmlFor="agency-select" className="text-sm text-foreground">Agency</label>
-                      <div className="relative">
-                        <select
-                          id="agency-select"
-                          value={agencyIdx}
-                          onChange={(e) => { setAgencyIdx(Number(e.target.value)); setError(""); }}
-                          className="w-full appearance-none rounded-lg border border-border bg-card px-4 py-3 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-                        >
-                          {AGENCIES.map((a, i) => (
-                            <option key={a.id} value={i}>
-                              {a.name}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                      </div>
-                    </div>
-
-                    {/* Officer name free-text */}
-                    <div className="flex flex-col gap-1.5">
-                      <label htmlFor="officer-name" className="text-sm text-foreground">
-                        Officer Name <span className="text-muted-foreground">(optional)</span>
-                      </label>
+                      <label htmlFor="officer-email" className="text-sm text-foreground">Officer email</label>
                       <input
-                        id="officer-name"
-                        type="text"
-                        placeholder="e.g. En. Kamal"
-                        value={officerName}
-                        onChange={(e) => setOfficerName(e.target.value)}
+                        id="officer-email"
+                        type="email"
+                        placeholder="officer@authority.gov.my"
+                        value={officerEmail}
+                        onChange={(e) => { setOfficerEmail(e.target.value); setError(""); }}
                         className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
                       />
                     </div>
@@ -302,7 +262,7 @@ export default function LoginPage() {
                           value={agencyPwd}
                           onChange={(e) => { setAgencyPwd(e.target.value); setError(""); }}
                           className="w-full rounded-lg border border-border bg-card px-4 py-3 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-                          onKeyDown={(e) => e.key === "Enter" && handleLogin(false)}
+                          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                         />
                         <button
                           type="button"
@@ -329,7 +289,7 @@ export default function LoginPage() {
                 <div className="flex flex-col gap-2 pt-1">
                   <button
                     id="login-submit"
-                    onClick={() => handleLogin(false)}
+                    onClick={handleLogin}
                     disabled={loading}
                     className="w-full rounded-lg bg-primary px-4 py-3 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
@@ -338,14 +298,6 @@ export default function LoginPage() {
                     ) : (
                       <>Sign in <ArrowRight className="size-4" /></>
                     )}
-                  </button>
-                  <button
-                    id="login-continue"
-                    onClick={() => handleLogin(true)}
-                    disabled={loading}
-                    className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground transition-colors hover:bg-accent hover:border-primary disabled:opacity-50"
-                  >
-                    Continue without password
                   </button>
                 </div>
               </div>

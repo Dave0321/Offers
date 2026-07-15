@@ -33,8 +33,10 @@ export interface Issue {
   category: IssueCategory;
   description: string;
   location: string;
-  area: string; // council / district
-  agency: string;
+  area?: string; // council / district
+  agency?: string;
+  lat?: number;
+  lng?: number;
   status: IssueStatus;
   priority: IssuePriority;
   reportedBy: string;

@@ -800,7 +800,7 @@ export default function AgencyDashboardView() {
   const searchParams = useSearchParams();
   const tab = (searchParams.get("tab") as Tab) || "cases";
 
-  const { issues: globalIssues, updateIssueStatus } = useIssues();
+  const { issues: globalIssues, updateIssueStatus, apiError } = useIssues();
   const [filter, setFilter] = React.useState<FilterStatus>("all");
   const [query, setQuery] = React.useState("");
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -841,6 +841,11 @@ export default function AgencyDashboardView() {
 
   return (
     <div className="flex flex-col gap-6">
+      {apiError && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {apiError}
+        </div>
+      )}
       {/* ── Agency Header ── */}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
         {/* Absolute Bell for Desktop/Full screen view */}
